@@ -4,11 +4,12 @@
   "description": "Jira Timer",
   "productName": "Jira Timer",
   "main": "index.js",
+  "engines" : { "node" : ">=10.0 <11.0" },
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
     "start": "NODE_ENV=development electron .",
     "dev": "concurrently -k 'node -r esm ./main/development/server.js' 'npm start'",
-    "pack": "NODE_ENV=production webpack --config webpack.config.production.babel.js",
+    "pack": "NODE_ENV=production webpack --progress --colors --config webpack.config.production.babel.js",
     "build": "npm run pack && electron-builder",
     "build:linux": "npm run pack && electron-builder --linux",
     "release": "npm --no-git-tag-version version patch && npm run pack && electron-builder --linux --mac -p always && opn https://github.com/alexcroox/jira-timer-menubar/releases && npm run postinstall"
