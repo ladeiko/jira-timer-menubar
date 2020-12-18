@@ -1,4 +1,4 @@
-import { remote } from 'electron'
+import { remote, ipcMain } from 'electron'
 import React from 'react'
 import { render } from 'react-dom'
 import { Provider } from 'react-redux'
@@ -13,6 +13,7 @@ import { setVersion } from './modules/updater'
 import { setAuthToken, setJiraDomain } from './modules/user'
 import { setFirstLaunchSettings } from './modules/settings'
 import AppContainer from './containers/app/app-container'
+import { pauseAllTimers } from './modules/timer'
 
 const log = remote.require('electron-log')
 
@@ -55,3 +56,10 @@ watchHeightChanges()
 setInterval(() => {
   storeState(store.getState())
 }, 60000)
+
+ipcMain.once('before-quit', () => {
+  store.dispatch(pauseAllTimers())
+  storeState(store.getState())
+})
+
+

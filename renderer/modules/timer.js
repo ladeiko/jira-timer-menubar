@@ -11,6 +11,7 @@ import format from 'date-fns/format'
 const ADD_TIMER = 'jt/timer/ADD_TIMER'
 const DELETE_TIMER = 'jt/timer/DELETE_TIMER'
 const PAUSE_TIMER = 'jt/timer/PAUSE_TIMER'
+const PAUSE_ALL_TIMERS = 'jt/timer/PAUSE_ALL_TIMERS'
 const POST_TIMER = 'jt/timer/POST_TIMER'
 const UPDATE_TIMER = 'jt/timer/UPDATE_TIMER'
 const UPDATE_COMMENT = 'jt/timer/UPDATE_COMMENT'
@@ -21,6 +22,8 @@ const initialState = Immutable({
   commenting: false
 })
 
+const MAX_TIMERS = 10;
+
 // Reducer
 export default function reducer (state = initialState, action = {}) {
   switch (action.type) {
@@ -29,8 +32,27 @@ export default function reducer (state = initialState, action = {}) {
       // We don't want to allow duplicate timers
       let existingTimer = find(state.list, ['id', action.timer.id])
 
-      if (state.list.length < 5 && !existingTimer)
-        return state.set('list', [action.timer].concat(state.list))
+      if (state.list.length < MAX_TIMERS && !existingTimer) {
+
+        let list = Immutable.asMutable(state.list, { deep: true })
+
+        if (!action.timer.paused) {
+
+          list.forEach((timer) => {
+
+            // We need to make sure the timer isn't already paused. Otherwise we will
+            // be adding time since it was last paused!
+            if (!timer.paused) {
+              timer.paused = true;
+              timer.endTime = Date.now()
+              timer.previouslyElapsed = (Date.now() - timer.startTime) + timer.previouslyElapsed
+            }
+
+          });
+        }
+
+        return state.set('list', Immutable([action.timer].concat(list)))
+      }
     }
 
     case DELETE_TIMER: {
@@ -41,6 +63,20 @@ export default function reducer (state = initialState, action = {}) {
         list.splice(timerIndex, 1)
         return state.set('list', Immutable(list))
       }
+    }
+
+    case PAUSE_ALL_TIMERS: {
+      let list = Immutable.asMutable(state.list, {deep: true})
+      list.forEach((timer) => {
+        // We need to make sure the timer isn't already paused. Otherwise we will
+        // be adding time since it was last paused!
+        if (!timer.paused) {
+          timer.paused = true;
+          timer.endTime = Date.now()
+          timer.previouslyElapsed = (Date.now() - timer.startTime) + timer.previouslyElapsed
+        }
+      })
+      return state.set('list', Immutable(list))
     }
 
     case PAUSE_TIMER: {
@@ -62,6 +98,25 @@ export default function reducer (state = initialState, action = {}) {
         }
 
         timer.paused = action.pause
+
+        // Pause others
+        if (!action.pause) {
+          list.forEach((timer) => {
+
+            if (timer.id === action.timerId) {
+              return;
+            }
+
+            // We need to make sure the timer isn't already paused. Otherwise we will
+            // be adding time since it was last paused!
+            if (!timer.paused) {
+              timer.paused = true;
+              timer.endTime = Date.now()
+              timer.previouslyElapsed = (Date.now() - timer.startTime) + timer.previouslyElapsed
+            }
+
+          });
+        }
 
         return state.set('list', Immutable(list))
       } else {
@@ -129,6 +184,10 @@ export const pauseTimer = (timerId, pause) => ({
   type: PAUSE_TIMER,
   timerId,
   pause
+})
+
+export const pauseAllTimers = () => ({
+  type: PAUSE_ALL_TIMERS
 })
 
 export const postingTimer = (timerId, posting) => ({
